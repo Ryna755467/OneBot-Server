@@ -43,4 +43,8 @@ export class BotService {
       }
     }
   }
+
+  async handleNotice(message: NapCatMessage): Promise<void> {}
+
+  async handleRequest(message: NapCatMessage): Promise<void> {}
 }
