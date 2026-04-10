@@ -11,7 +11,7 @@ export class HelpPlugin implements BotPlugin {
   }
 
   handle(message: NapCatMessage, napCatService: NapCatService): void {
-    const helpText = `🤖 机器人插件列表：
+    const helpText = `机器人插件列表：
 /echo 内容 - 复读内容
 /help - 查看帮助`;
 

@@ -19,22 +19,36 @@ export class NapCatService {
   }
 
   handleIncomingMessage(message: NapCatMessage, client: WebSocket): void {
+    // 心跳和生命周期
     if (message.post_type === 'meta_event') {
       this.handleMetaEvent(message);
       return;
     }
 
+    // 群成员增减、禁言、撤回、文件上传等非消息类的通知
+    if (message.post_type === 'notice') {
+      void this.botService.handleNotice(message);
+      return;
+    }
+
+    // 加好友请求、加群请求等需要同意或拒绝的操作
+    if (message.post_type === 'request') {
+      void this.botService.handleRequest(message);
+      return;
+    }
+
+    // 收到私聊、群聊、讨论组消息等
     if (message.post_type === 'message') {
       void this.botService.handleMessage(message);
       return;
     }
 
-    this.logger.debug(`未处理的 NapCat 事件类型: ${message.post_type}`);
+    // this.logger.debug(`未处理的 NapCat 事件类型: ${message.post_type}`);
   }
 
   private handleMetaEvent(message: NapCatMessage): void {
     if (message.meta_event_type === 'heartbeat') {
-      this.logger.debug('收到 NapCat 心跳');
+      // this.logger.debug('收到 NapCat 心跳');
     }
   }
 
