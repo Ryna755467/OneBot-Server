@@ -14,6 +14,10 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      "@bot/*": ["src/modules/bot/*"],
+      "@napcat/*": ["src/modules/napcat/*"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,

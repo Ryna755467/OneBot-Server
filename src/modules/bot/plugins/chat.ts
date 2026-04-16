@@ -1,6 +1,6 @@
 import { BotPlugin } from '../service';
-import { NapCatMessage } from '../../napcat/interfaces/message';
-import { NapCatService } from '../../napcat/service';
+import { NapCatMessage } from '@napcat/interfaces/message';
+import { NapCatService } from '@napcat/service';
 import { LlmResponse } from '../types/llm';
 import axios from 'axios';
 

@@ -1,6 +1,6 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
-import { NapCatMessage } from '../napcat/interfaces/message';
-import { NapCatService } from '../napcat/service';
+import { NapCatMessage } from '@napcat/interfaces/message';
+import { NapCatService } from '@napcat/service';
 import { EchoPlugin } from './plugins/echo';
 import { HelpPlugin } from './plugins/help';
 import { ChatPlugin } from './plugins/chat';

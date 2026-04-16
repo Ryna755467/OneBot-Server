@@ -1,6 +1,6 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { BotService } from './service';
-import { NapCatModule } from '../napcat/module';
+import { NapCatModule } from '@napcat/module';
 
 @Module({
   imports: [forwardRef(() => NapCatModule)],
