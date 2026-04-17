@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocket } from 'ws';
 import { NapCatMessage, NapCatApiRequest } from './interfaces/message';
-import { BotService } from '../bot/service';
+import { BotService } from '@bot/service';
 
 @Injectable()
 export class NapCatService {
