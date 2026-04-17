@@ -19,25 +19,41 @@ export class ChatPlugin implements BotPlugin {
     message: NapCatMessage,
     napCatService: NapCatService,
   ): Promise<void> {
-    const userMsg = message.raw_message?.trim();
+    const { message_type, user_id, group_id, message: userMsg } = message;
+
     const uid = this.getUid(message);
     if (!userMsg || !uid) return;
 
     try {
-      const reply = await this.callLLM(userMsg, uid);
+      const prompt = userMsg.reduce((prev, segment) => {
+        const { type, data } = segment;
+        const { text, file, url } = data;
 
-      if (message.message_type === 'private') {
-        napCatService.sendPrivateMessage(message.user_id!, reply);
-      } else if (message.message_type === 'group') {
-        napCatService.sendGroupMessage(message.group_id!, reply);
+        switch (type) {
+          case 'text':
+            return prev + text;
+
+          case 'image':
+            return prev + `[图片名称：${file}，图片链接：${url}]`;
+        }
+
+        return prev;
+      }, '');
+
+      const reply = await this.callLLM(prompt, uid);
+
+      if (message_type === 'private') {
+        napCatService.sendPrivateMessage(user_id!, reply);
+      } else if (message_type === 'group') {
+        napCatService.sendGroupMessage(group_id!, reply);
       }
     } catch {
       const errMsg = '服务器异常';
 
-      if (message.message_type === 'private') {
-        napCatService.sendPrivateMessage(message.user_id!, errMsg);
-      } else if (message.message_type === 'group') {
-        napCatService.sendGroupMessage(message.group_id!, errMsg);
+      if (message_type === 'private') {
+        napCatService.sendPrivateMessage(user_id!, errMsg);
+      } else if (message_type === 'group') {
+        napCatService.sendGroupMessage(group_id!, errMsg);
       }
     }
   }
@@ -62,11 +78,13 @@ export class ChatPlugin implements BotPlugin {
     return data.content;
   }
 
-  private getUid(msg: NapCatMessage): string | undefined {
-    if (msg.message_type === 'private') {
-      return `p_${msg.user_id}`;
-    } else if (msg.message_type === 'group') {
-      return `g_${msg.group_id}_${msg.user_id}`;
+  private getUid(message: NapCatMessage): string | undefined {
+    const { message_type, user_id, group_id } = message;
+
+    if (message_type === 'private') {
+      return `p_${user_id}`;
+    } else if (message_type === 'group') {
+      return `g_${group_id}_${user_id}`;
     }
   }
 }
