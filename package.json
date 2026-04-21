@@ -1,6 +1,6 @@
 {
   "name": "onebot-server",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "",
   "author": "",
   "private": true,
@@ -27,6 +27,7 @@
     "@nestjs/platform-ws": "^11.1.18",
     "@nestjs/websockets": "^11.1.18",
     "axios": "^1.15.0",
+    "fs-extra": "^11.3.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "ws": "^8.20.0"
@@ -38,6 +39,7 @@
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
     "@types/express": "^5.0.0",
+    "@types/fs-extra": "^11.0.4",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.10.7",
     "@types/supertest": "^6.0.2",
