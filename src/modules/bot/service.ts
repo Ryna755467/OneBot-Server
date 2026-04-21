@@ -1,5 +1,5 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
-import { NapCatMessage } from '@napcat/interfaces/message';
+import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
 import { EchoPlugin } from './plugins/echo';
 import { HelpPlugin } from './plugins/help';
@@ -8,11 +8,13 @@ import { ChatPlugin } from './plugins/chat';
 export interface BotPlugin {
   name: string;
   description: string;
-  match: (message: NapCatMessage) => boolean;
+  match: (message: NapCatEvent) => boolean;
   handle: (
-    message: NapCatMessage,
+    message: NapCatEvent,
     napCatService: NapCatService,
   ) => void | Promise<void>;
+  // 插件内部处理API响应
+  handleApiResponse?: (message: NapCatApiResponse) => Promise<void>;
 }
 
 @Injectable()
@@ -29,7 +31,18 @@ export class BotService {
     private readonly napCatService: NapCatService,
   ) {}
 
-  async handleMessage(message: NapCatMessage): Promise<void> {
+  // 广播给所有插件
+  async handleApiResponse(message: NapCatApiResponse): Promise<void> {
+    for (const plugin of this.plugins) {
+      try {
+        await plugin.handleApiResponse?.(message);
+      } catch (error) {
+        this.logger.error(`插件 ${plugin.name} API响应处理失败`, error);
+      }
+    }
+  }
+
+  async handleMessage(message: NapCatEvent): Promise<void> {
     this.logger.log(
       `收到 ${message.message_type} 消息，来自 ${message.user_id}`,
     );
@@ -49,7 +62,7 @@ export class BotService {
     }
   }
 
-  async handleNotice(message: NapCatMessage): Promise<void> {}
-
-  async handleRequest(message: NapCatMessage): Promise<void> {}
+  async handleNotice(message: NapCatEvent): Promise<void> {}
+  async handleRequest(message: NapCatEvent): Promise<void> {}
+  async handleMetaEvent(message: NapCatEvent): Promise<void> {}
 }
