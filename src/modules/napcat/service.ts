@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocket } from 'ws';
 import { NapCatMessage, NapCatApiRequest } from './interfaces/message';
+import { isNapCatApiResponse } from './utils/guard';
 import { BotService } from '@bot/service';
 
 @Injectable()
@@ -19,9 +20,15 @@ export class NapCatService {
   }
 
   handleIncomingMessage(message: NapCatMessage, client: WebSocket): void {
+    // API响应处理
+    if (isNapCatApiResponse(message)) {
+      void this.botService.handleApiResponse(message);
+      return;
+    }
+
     // 心跳和生命周期
     if (message.post_type === 'meta_event') {
-      this.handleMetaEvent(message);
+      void this.botService.handleMetaEvent(message);
       return;
     }
 
@@ -42,14 +49,6 @@ export class NapCatService {
       void this.botService.handleMessage(message);
       return;
     }
-
-    // this.logger.debug(`未处理的 NapCat 事件类型: ${message.post_type}`);
-  }
-
-  private handleMetaEvent(message: NapCatMessage): void {
-    if (message.meta_event_type === 'heartbeat') {
-      // this.logger.debug('收到 NapCat 心跳');
-    }
   }
 
   sendApiRequest(request: NapCatApiRequest): void {
@@ -66,20 +65,32 @@ export class NapCatService {
   sendPrivateMessage(userId: number, message: string): void {
     this.sendApiRequest({
       action: 'send_private_msg',
-      params: {
-        user_id: userId,
-        message,
-      },
+      params: { user_id: userId, message },
     });
   }
 
   sendGroupMessage(groupId: number, message: string): void {
     this.sendApiRequest({
       action: 'send_group_msg',
-      params: {
-        group_id: groupId,
-        message,
-      },
+      params: { group_id: groupId, message },
+    });
+  }
+
+  // 获取私聊文件真实URL
+  getPrivateFileUrl(userId: number, fileId: string, echo: string): void {
+    this.sendApiRequest({
+      action: 'get_private_file_url',
+      params: { user_id: userId, file_id: fileId },
+      echo,
+    });
+  }
+
+  // 获取群聊文件真实URL
+  getGroupFileUrl(groupId: number, fileId: string, echo: string): void {
+    this.sendApiRequest({
+      action: 'get_group_file_url',
+      params: { group_id: groupId, file_id: fileId },
+      echo,
     });
   }
 }

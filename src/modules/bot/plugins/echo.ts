@@ -1,16 +1,16 @@
 import { BotPlugin } from '../service';
-import { NapCatMessage } from '@napcat/interfaces/message';
+import { NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
 
 export class EchoPlugin implements BotPlugin {
   name = 'echo';
   description = '复读插件：发送 /echo 内容 即可复读';
 
-  match(message: NapCatMessage): boolean {
+  match(message: NapCatEvent): boolean {
     return message.raw_message?.startsWith('/echo ') ?? false;
   }
 
-  handle(message: NapCatMessage, napCatService: NapCatService): void {
+  handle(message: NapCatEvent, napCatService: NapCatService): void {
     const content = message.raw_message!.replace('/echo ', '');
 
     if (message.message_type === 'private') {
