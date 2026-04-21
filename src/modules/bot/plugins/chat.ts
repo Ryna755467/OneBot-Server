@@ -3,6 +3,8 @@ import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
 import { LlmResponse } from '../types/llm';
 import { randomUUID } from 'crypto';
+import { join } from 'path';
+import fs from 'fs-extra';
 import axios from 'axios';
 
 type PendingTask = {
@@ -18,6 +20,7 @@ export class ChatPlugin implements BotPlugin {
 
   private userContext = new Map<string, string>();
   private pendingTasks = new Map<number, PendingTask>();
+  private readonly publicDir = process.env.PUBLIC_DIR!;
   private readonly llmChatUrl = process.env.LLM_CHAT_URL!;
 
   match(message: NapCatEvent): boolean {
@@ -91,6 +94,7 @@ export class ChatPlugin implements BotPlugin {
     try {
       const { echo, data } = message;
       const { url } = data;
+      if (!echo || !url) return;
 
       let targetTask: PendingTask | null = null;
       let targetId: number | null = null;
@@ -104,9 +108,10 @@ export class ChatPlugin implements BotPlugin {
       }
       if (!targetTask || !targetId) return;
 
+      const publicUrl = await this.downloadToPublic(url);
       const newPrompt = targetTask.prompt.replace(
         `UUID：${echo}`,
-        `文件链接：${url}`,
+        `文件链接：${publicUrl}`,
       );
       targetTask.remaining--;
 
@@ -123,6 +128,34 @@ export class ChatPlugin implements BotPlugin {
       this.pendingTasks.delete(targetId);
     } catch {
       console.error('handleApiResponse error');
+    }
+  }
+
+  private async downloadToPublic(url: string): Promise<string> {
+    try {
+      const saveDir = join(__dirname, '../../../../public/files');
+      await fs.ensureDir(saveDir); // 自动创建目录
+      const filename = randomUUID();
+      const savePath = join(saveDir, filename);
+
+      const res = await axios({
+        url,
+        method: 'GET',
+        responseType: 'stream',
+        headers: { 'User-Agent': 'QQ/8.9.63 Windows NT' },
+      });
+
+      const writer = fs.createWriteStream(savePath);
+      (res.data as NodeJS.ReadableStream).pipe(writer);
+
+      await new Promise<void>((resolve, reject) => {
+        writer.on('finish', () => resolve());
+        writer.on('error', (err) => reject(err));
+      });
+
+      return `${this.publicDir}/${filename}`;
+    } catch {
+      return 'undefined';
     }
   }
 
