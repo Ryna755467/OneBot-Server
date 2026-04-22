@@ -16,7 +16,8 @@
     "baseUrl": "./",
     "paths": {
       "@bot/*": ["src/modules/bot/*"],
-      "@napcat/*": ["src/modules/napcat/*"]
+      "@napcat/*": ["src/modules/napcat/*"],
+      "@utils/*": ["src/utils/*"]
     },
     "incremental": true,
     "skipLibCheck": true,
