@@ -56,21 +56,28 @@ export class ChatPlugin implements BotPlugin {
     }
 
     try {
+      let prompt = '';
       let fileCount = 0;
 
-      const prompt = userMsg.reduce((prev, segment) => {
+      for (const segment of userMsg) {
         const { type, data } = segment;
         const { text, file, file_id, url } = data;
 
         switch (type) {
           case 'text':
-            return prev + text;
+            prompt += text;
+            break;
 
           case 'image':
-            return prev + `[图片名称：${file}，图片链接：${url}]`;
+            prompt += `[图片名称：${file}，图片链接：${url}]`;
+            break;
 
-          case 'video':
-            return prev + `[视频名称：${file}，视频链接：${url}]`;
+          case 'video': {
+            const publicUrl = await download(url!);
+            // 视频可以立刻拿到下载链接 需要转存到服务器才能访问
+            prompt += `[视频名称：${file}，视频链接：${publicUrl}]`;
+            break;
+          }
 
           case 'file': {
             fileCount++;
@@ -82,12 +89,11 @@ export class ChatPlugin implements BotPlugin {
               napCatService.getGroupFileUrl(group_id!, file_id!, echo);
             }
 
-            return prev + `[文件名称：${file}，UUID：${echo}]`;
+            prompt += `[文件名称：${file}，UUID：${echo}]`;
+            break;
           }
         }
-
-        return prev;
-      }, '');
+      }
 
       if (fileCount === 0) {
         const reply = await this.callLLM(prompt, this.getUid(message));
