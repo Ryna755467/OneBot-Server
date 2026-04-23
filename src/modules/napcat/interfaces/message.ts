@@ -3,6 +3,7 @@ export type MessageType =
   | 'image' // 图片
   | 'record' // 语音
   | 'video' // 视频
+  | 'reply' // 回复
   | 'file' // 文件
   | 'at'; // @用户
 
@@ -12,6 +13,7 @@ export interface MessageData {
   file_id?: string; // 文件ID
   url?: string; // 访问链接
   qq?: string; // all代表@全体
+  id?: number; // 回复的消息ID
 }
 
 export interface MessageSegment {

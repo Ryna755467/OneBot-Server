@@ -1,5 +1,9 @@
 import { BotPlugin } from '../service';
-import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
+import {
+  MessageSegment,
+  NapCatApiResponse,
+  NapCatEvent,
+} from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
 import { LlmResponse } from '../types/llm';
 import { randomUUID } from 'crypto';
@@ -20,6 +24,7 @@ export class ChatPlugin implements BotPlugin {
   private userContext = new Map<string, string>();
   private pendingTasks = new Map<number, PendingTask>();
   private readonly llmChatUrl = process.env.LLM_CHAT_URL!;
+  private readonly userId = process.env.USER_ID!;
 
   match(message: NapCatEvent): boolean {
     return true;
@@ -37,6 +42,18 @@ export class ChatPlugin implements BotPlugin {
       message: userMsg,
     } = message;
     if (!userMsg) return;
+
+    // 群聊只处理@机器人的消息
+    if (message_type === 'group') {
+      const isAtMe = userMsg.some((segment) => {
+        const { type, data } = segment;
+        const { qq } = data;
+        if (type === 'at' && qq === this.userId) {
+          return true;
+        }
+      });
+      if (!isAtMe) return;
+    }
 
     try {
       let fileCount = 0;
@@ -74,7 +91,9 @@ export class ChatPlugin implements BotPlugin {
 
       if (fileCount === 0) {
         const reply = await this.callLLM(prompt, this.getUid(message));
-        this.replyMessage(napCatService, message, reply);
+        this.replyMessage(napCatService, message, [
+          { type: 'text', data: { text: reply } },
+        ]);
       } else {
         this.pendingTasks.set(message_id!, {
           napCatService,
@@ -84,7 +103,9 @@ export class ChatPlugin implements BotPlugin {
         });
       }
     } catch {
-      this.replyMessage(napCatService, message, '服务器异常');
+      this.replyMessage(napCatService, message, [
+        { type: 'text', data: { text: '服务器异常' } },
+      ]);
     }
   }
 
@@ -122,7 +143,9 @@ export class ChatPlugin implements BotPlugin {
         newPrompt,
         this.getUid(targetTask.message),
       );
-      this.replyMessage(targetTask.napCatService, targetTask.message, reply);
+      this.replyMessage(targetTask.napCatService, targetTask.message, [
+        { type: 'text', data: { text: reply } },
+      ]);
       this.pendingTasks.delete(targetId);
     } catch {
       console.error('handleApiResponse error');
@@ -152,14 +175,20 @@ export class ChatPlugin implements BotPlugin {
   private replyMessage(
     napCatService: NapCatService,
     message: NapCatEvent,
-    content: string,
+    content: MessageSegment[],
   ) {
-    const { message_type, user_id, group_id } = message;
+    const { message_type, message_id, user_id, group_id } = message;
 
     if (message_type === 'private') {
       napCatService.sendPrivateMessage(user_id!, content);
     } else if (message_type === 'group') {
-      napCatService.sendGroupMessage(group_id!, content);
+      napCatService.sendGroupMessage(group_id!, [
+        {
+          type: 'reply',
+          data: { id: message_id },
+        },
+        ...content,
+      ]);
     }
   }
 
