@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocket } from 'ws';
-import { NapCatMessage, NapCatApiRequest } from './interfaces/message';
+import {
+  NapCatMessage,
+  NapCatApiRequest,
+  MessageSegment,
+} from './interfaces/message';
 import { isNapCatApiResponse } from './utils/guard';
 import { BotService } from '@bot/service';
 
@@ -62,14 +66,14 @@ export class NapCatService {
     this.logger.debug(`发送 NapCat API 请求: ${data}`);
   }
 
-  sendPrivateMessage(userId: number, message: string): void {
+  sendPrivateMessage(userId: number, message: MessageSegment[]): void {
     this.sendApiRequest({
       action: 'send_private_msg',
       params: { user_id: userId, message },
     });
   }
 
-  sendGroupMessage(groupId: number, message: string): void {
+  sendGroupMessage(groupId: number, message: MessageSegment[]): void {
     this.sendApiRequest({
       action: 'send_group_msg',
       params: { group_id: groupId, message },

@@ -16,9 +16,13 @@ export class HelpPlugin implements BotPlugin {
 /help - 查看帮助`;
 
     if (message.message_type === 'private') {
-      napCatService.sendPrivateMessage(message.user_id!, helpText);
+      napCatService.sendPrivateMessage(message.user_id!, [
+        { type: 'text', data: { text: helpText } },
+      ]);
     } else if (message.message_type === 'group') {
-      napCatService.sendGroupMessage(message.group_id!, helpText);
+      napCatService.sendGroupMessage(message.group_id!, [
+        { type: 'text', data: { text: helpText } },
+      ]);
     }
   }
 }
