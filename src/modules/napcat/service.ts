@@ -5,7 +5,7 @@ import {
   NapCatApiRequest,
   MessageSegment,
 } from './interfaces/message';
-import { isNapCatApiResponse } from './utils/guard';
+import { isNapCatApiResponse } from './utils';
 import { BotService } from '@bot/service';
 
 @Injectable()

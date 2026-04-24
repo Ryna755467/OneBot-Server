@@ -1,9 +1,7 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
 import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
-import { EchoPlugin } from './plugins/echo';
-import { HelpPlugin } from './plugins/help';
-import { ChatPlugin } from './plugins/chat';
+import { ChatPlugin, HelpPlugin } from './plugins';
 
 export interface BotPlugin {
   name: string;
@@ -20,11 +18,7 @@ export interface BotPlugin {
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
-  private readonly plugins: BotPlugin[] = [
-    new EchoPlugin(),
-    new HelpPlugin(),
-    new ChatPlugin(),
-  ];
+  private readonly plugins: BotPlugin[] = [new HelpPlugin(), new ChatPlugin()];
 
   constructor(
     @Inject(forwardRef(() => NapCatService))
