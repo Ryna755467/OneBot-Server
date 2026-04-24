@@ -15,6 +15,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
+      "@sql/*": ["src/modules/sql/*"],
       "@bot/*": ["src/modules/bot/*"],
       "@napcat/*": ["src/modules/napcat/*"],
       "@utils/*": ["src/utils/*"]

@@ -1,6 +1,7 @@
 import { BotPlugin } from '../service';
 import { NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
+import { replyMessage } from '../utils';
 
 export class HelpPlugin implements BotPlugin {
   name = 'help';
@@ -11,18 +12,10 @@ export class HelpPlugin implements BotPlugin {
   }
 
   handle(message: NapCatEvent, napCatService: NapCatService): void {
-    const helpText = `机器人插件列表：
-/echo 内容 - 复读内容
-/help - 查看帮助`;
+    const helpText = '机器人插件列表：/help - 查看帮助';
 
-    if (message.message_type === 'private') {
-      napCatService.sendPrivateMessage(message.user_id!, [
-        { type: 'text', data: { text: helpText } },
-      ]);
-    } else if (message.message_type === 'group') {
-      napCatService.sendGroupMessage(message.group_id!, [
-        { type: 'text', data: { text: helpText } },
-      ]);
-    }
+    replyMessage(napCatService, message, [
+      { type: 'text', data: { text: helpText } },
+    ]);
   }
 }
