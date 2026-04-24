@@ -1,13 +1,9 @@
 import { BotPlugin } from '../service';
+import { Injectable } from '@nestjs/common';
 import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
-import {
-  replyMessage,
-  saveMessage,
-  findMessage,
-  callLLM,
-  getUid,
-} from '../utils';
+import { ConversationManager, MessageManager } from '../managers';
+import { replyMessage, callLLM, getUid } from '../utils';
 import { randomUUID } from 'crypto';
 import { download } from '@utils/index';
 
@@ -18,7 +14,13 @@ type PendingTask = {
   remaining: number;
 };
 
+@Injectable()
 export class ChatPlugin implements BotPlugin {
+  constructor(
+    private readonly conversationManager: ConversationManager,
+    private readonly messageManager: MessageManager,
+  ) {}
+
   private pendingTasks = new Map<number, PendingTask>();
   private readonly userId = process.env.USER_ID!;
 
@@ -37,7 +39,7 @@ export class ChatPlugin implements BotPlugin {
     if (!userMsg) return;
 
     // 保存所有消息 引用时读取
-    await saveMessage(message);
+    await this.messageManager.saveMessage(message);
 
     // 群聊只处理@机器人的消息
     if (message_type === 'group') {
@@ -58,7 +60,8 @@ export class ChatPlugin implements BotPlugin {
       );
 
       if (fileCount === 0) {
-        const reply = await callLLM(prompt, getUid(message));
+        const reply = await this.handleChat(prompt, getUid(message));
+
         replyMessage(napCatService, message, [
           { type: 'text', data: { text: reply } },
         ]);
@@ -107,7 +110,11 @@ export class ChatPlugin implements BotPlugin {
         return;
       }
 
-      const reply = await callLLM(newPrompt, getUid(targetTask.message));
+      const reply = await this.handleChat(
+        newPrompt,
+        getUid(targetTask.message),
+      );
+
       replyMessage(targetTask.napCatService, targetTask.message, [
         { type: 'text', data: { text: reply } },
       ]);
@@ -161,13 +168,13 @@ export class ChatPlugin implements BotPlugin {
         }
 
         case 'reply': {
-          const replyMessage = await findMessage(id!);
+          const replyMessage = await this.messageManager.findMessage(id!);
           if (!replyMessage) continue;
 
           const { prompt: replyPrompt, fileCount: replyFileCount } =
             await this.handleSegments(replyMessage, napCatService);
 
-          prompt += `[引用了一条消息，内容是：${replyPrompt}]`;
+          prompt += `[引用了一条消息：“${replyPrompt}”]`;
           fileCount += replyFileCount;
           break;
         }
@@ -175,5 +182,17 @@ export class ChatPlugin implements BotPlugin {
     }
 
     return { prompt, fileCount };
+  }
+
+  private async handleChat(prompt: string, uid: string) {
+    console.log(prompt);
+    const conversationId = await this.conversationManager.findConversation(uid);
+    const { content, newConversationId } = await callLLM(
+      prompt,
+      conversationId,
+    );
+
+    await this.conversationManager.saveConversation(uid, newConversationId);
+    return content;
   }
 }

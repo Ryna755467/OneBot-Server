@@ -1,11 +1,15 @@
 import { LlmResponse } from '../types';
 import axios from 'axios';
 
-const userContext = new Map<string, string>();
+interface CallResponse {
+  content: string;
+  newConversationId?: string;
+}
 
-export const callLLM = async (prompt: string, uid: string): Promise<string> => {
-  const conversationId = userContext.get(uid);
-
+export const callLLM = async (
+  prompt: string,
+  conversationId?: string,
+): Promise<CallResponse> => {
   const res = await axios.post<LlmResponse>(process.env.LLM_CHAT_URL!, {
     prompt,
     conversationId,
@@ -16,9 +20,6 @@ export const callLLM = async (prompt: string, uid: string): Promise<string> => {
   if (!success) {
     throw new Error(content);
   }
-  if (newConversationId) {
-    userContext.set(uid, newConversationId);
-  }
 
-  return content;
+  return { content, newConversationId };
 };

@@ -18,12 +18,16 @@ export interface BotPlugin {
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
-  private readonly plugins: BotPlugin[] = [new HelpPlugin(), new ChatPlugin()];
+  private readonly plugins: BotPlugin[];
 
   constructor(
     @Inject(forwardRef(() => NapCatService))
     private readonly napCatService: NapCatService,
-  ) {}
+    private readonly helpPlugin: HelpPlugin,
+    private readonly chatPlugin: ChatPlugin,
+  ) {
+    this.plugins = [this.helpPlugin, this.chatPlugin];
+  }
 
   // 广播给所有插件
   async handleApiResponse(message: NapCatApiResponse): Promise<void> {
