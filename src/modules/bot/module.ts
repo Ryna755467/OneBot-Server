@@ -3,7 +3,7 @@ import { NapCatModule } from '@napcat/module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NapCatMessage, BotConversation } from '@sql/entities';
 import { ConversationManager, MessageManager } from './managers';
-import { HelpPlugin, ChatPlugin } from './plugins';
+import { HelpPlugin, ChatPlugin, RconPlugin } from './plugins';
 import { BotService } from './service';
 
 @Module({
@@ -16,6 +16,7 @@ import { BotService } from './service';
     MessageManager,
     HelpPlugin,
     ChatPlugin,
+    RconPlugin,
     BotService,
   ],
   exports: [BotService],
