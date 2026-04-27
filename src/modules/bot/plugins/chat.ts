@@ -1,6 +1,6 @@
 import { BotPlugin } from '../service';
 import { Injectable } from '@nestjs/common';
-import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
+import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
 import { ConversationManager, MessageManager } from '../managers';
 import { replyMessage, callLLM, getUid } from '../utils';
@@ -185,7 +185,6 @@ export class ChatPlugin implements BotPlugin {
   }
 
   private async handleChat(prompt: string, uid: string) {
-    console.log(prompt);
     const conversationId = await this.conversationManager.findConversation(uid);
     const { content, newConversationId } = await callLLM(
       prompt,

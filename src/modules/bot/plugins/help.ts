@@ -1,5 +1,5 @@
 import { BotPlugin } from '../service';
-import { NapCatEvent } from '@napcat/interfaces/message';
+import { NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
 import { replyMessage } from '../utils';
 

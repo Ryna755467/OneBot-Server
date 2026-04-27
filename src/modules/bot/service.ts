@@ -1,7 +1,7 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
 import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces/message';
 import { NapCatService } from '@napcat/service';
-import { ChatPlugin, HelpPlugin } from './plugins';
+import { ChatPlugin, HelpPlugin, RconPlugin } from './plugins';
 
 export interface BotPlugin {
   name: string;
@@ -25,8 +25,9 @@ export class BotService {
     private readonly napCatService: NapCatService,
     private readonly helpPlugin: HelpPlugin,
     private readonly chatPlugin: ChatPlugin,
+    private readonly rconPlugin: RconPlugin,
   ) {
-    this.plugins = [this.helpPlugin, this.chatPlugin];
+    this.plugins = [this.rconPlugin, this.helpPlugin, this.chatPlugin];
   }
 
   // 广播给所有插件
