@@ -13,14 +13,15 @@ export const isMatch = (
   for (const segment of userMsg) {
     const { type, data } = segment;
     const { text, qq } = data;
+    const validText = text?.trim();
 
     if (type === 'at' && qq === botId) continue;
 
     if (
       type === 'text' &&
-      (text === prefix || text?.startsWith(`${prefix} `))
+      (validText === prefix || validText?.startsWith(`${prefix} `))
     ) {
-      const cmd = text.slice(prefix.length).trim();
+      const cmd = validText.slice(prefix.length).trim();
       return { match: true, cmd };
     }
 
