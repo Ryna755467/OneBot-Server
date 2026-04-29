@@ -1,10 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocket } from 'ws';
-import {
-  NapCatMessage,
-  NapCatApiRequest,
-  MessageSegment,
-} from './interfaces/message';
+import { NapCatMessage, NapCatApiRequest, MessageSegment } from './interfaces';
 import { isNapCatApiResponse } from './utils';
 import { BotService } from '@bot/service';
 
@@ -94,6 +90,24 @@ export class NapCatService {
     this.sendApiRequest({
       action: 'get_group_file_url',
       params: { group_id: groupId, file_id: fileId },
+      echo,
+    });
+  }
+
+  // 获取群根目录文件列表
+  getGroupRootFiles(groupId: number, echo: string): void {
+    this.sendApiRequest({
+      action: 'get_group_root_files',
+      params: { group_id: groupId },
+      echo,
+    });
+  }
+
+  // 获取群文件夹文件列表
+  getGroupFilesByFolder(groupId: number, folderId: string, echo: string): void {
+    this.sendApiRequest({
+      action: 'get_group_files_by_folder',
+      params: { group_id: groupId, folder_id: folderId },
       echo,
     });
   }

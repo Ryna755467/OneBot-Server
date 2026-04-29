@@ -35,25 +35,25 @@ export class ChatPlugin implements BotPlugin {
     message: NapCatEvent,
     napCatService: NapCatService,
   ): Promise<void> {
-    const { message_type, message_id, message: userMsg } = message;
-    if (!userMsg) return;
-
-    // 保存所有消息 引用时读取
-    await this.messageManager.saveMessage(message);
-
-    // 群聊只处理@机器人的消息
-    if (message_type === 'group') {
-      const isAtMe = userMsg.some((segment) => {
-        const { type, data } = segment;
-        const { qq } = data;
-        if (type === 'at' && qq === this.userId) {
-          return true;
-        }
-      });
-      if (!isAtMe) return;
-    }
-
     try {
+      const { message_type, message_id, message: userMsg } = message;
+      if (!userMsg) return;
+
+      // 保存所有消息 引用时读取
+      await this.messageManager.saveMessage(message);
+
+      // 群聊只处理@机器人的消息
+      if (message_type === 'group') {
+        const isAtMe = userMsg.some((segment) => {
+          const { type, data } = segment;
+          const { qq } = data;
+          if (type === 'at' && qq === this.userId) {
+            return true;
+          }
+        });
+        if (!isAtMe) return;
+      }
+
       const { prompt, fileCount } = await this.handleSegments(
         message,
         napCatService,

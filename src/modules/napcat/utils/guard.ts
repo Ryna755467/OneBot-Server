@@ -1,8 +1,4 @@
-import {
-  NapCatMessage,
-  NapCatEvent,
-  NapCatApiResponse,
-} from '../interfaces/message';
+import { NapCatMessage, NapCatEvent, NapCatApiResponse } from '../interfaces';
 
 export const isNapCatEvent = (
   message: NapCatMessage,

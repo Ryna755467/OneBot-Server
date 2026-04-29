@@ -1,11 +1,12 @@
 import { BotPlugin } from '../service';
 import { NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
-import { replyMessage } from '../utils';
+import { replyMessage, isMatch } from '../utils';
 import { Rcon } from 'rcon-client';
 
 export class RconPlugin implements BotPlugin {
-  private readonly commandPrefix = '/rcon ';
+  private readonly commandPrefix = '/remote';
+
   private readonly allowedUsers: number[] = process.env
     .RCON_ALLOWED_USERS!.split(',')
     .map(Number)
@@ -22,10 +23,10 @@ export class RconPlugin implements BotPlugin {
   private isConnecting = false;
 
   name = 'rcon';
-  description = 'RCON 远程控制：/rcon 指令';
+  description = 'RCON 远程控制：/remote 指令';
 
   match(message: NapCatEvent): boolean {
-    return message.raw_message?.startsWith(this.commandPrefix) || false;
+    return isMatch(message, this.commandPrefix).match;
   }
 
   async handle(
@@ -40,7 +41,7 @@ export class RconPlugin implements BotPlugin {
         ]);
       }
 
-      const cmd = message.raw_message?.slice(this.commandPrefix.length).trim();
+      const { cmd } = isMatch(message, this.commandPrefix);
       if (!cmd) {
         return replyMessage(napCatService, message, [
           { type: 'text', data: { text: 'RCON 用法：/rcon ${cmd}' } },
