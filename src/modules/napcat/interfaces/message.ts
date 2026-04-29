@@ -1,3 +1,5 @@
+import { NapCatApiResponse } from './response';
+
 export type MessageType =
   | 'text' // 文本
   | 'image' // 图片
@@ -38,22 +40,4 @@ export interface NapCatEvent {
   meta_event_type?: string;
 }
 
-export interface NapCatApiResponse {
-  status: 'ok' | 'failed';
-  retcode: number;
-  data: {
-    url?: string;
-  };
-  message: string;
-  wording: string;
-  echo?: string;
-  stream?: string;
-}
-
 export type NapCatMessage = NapCatEvent | NapCatApiResponse;
-
-export interface NapCatApiRequest {
-  action: string;
-  params: Record<string, unknown>;
-  echo?: string;
-}
