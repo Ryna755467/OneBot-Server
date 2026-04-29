@@ -44,7 +44,7 @@ export class RconPlugin implements BotPlugin {
       const { cmd } = isMatch(message, this.commandPrefix);
       if (!cmd) {
         return replyMessage(napCatService, message, [
-          { type: 'text', data: { text: 'RCON 用法：/rcon ${cmd}' } },
+          { type: 'text', data: { text: 'RCON 用法：/remote ${cmd}' } },
         ]);
       }
 
