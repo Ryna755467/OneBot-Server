@@ -1,7 +1,7 @@
 import { BotPlugin } from '../service';
 import { NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
-import { replyMessage } from '../utils';
+import { sendMatchMessage } from '../utils';
 
 export class HelpPlugin implements BotPlugin {
   name = 'help';
@@ -12,9 +12,9 @@ export class HelpPlugin implements BotPlugin {
   }
 
   handle(message: NapCatEvent, napCatService: NapCatService): void {
-    const helpText = '机器人插件列表：/help - 查看帮助';
+    const helpText = '插件列表：/help - 查看帮助';
 
-    replyMessage(napCatService, message, [
+    sendMatchMessage(napCatService, message, [
       { type: 'text', data: { text: helpText } },
     ]);
   }
