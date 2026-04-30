@@ -11,10 +11,13 @@ export class HelpPlugin implements BotPlugin {
     return message.raw_message === '/help';
   }
 
-  handle(message: NapCatEvent, napCatService: NapCatService): void {
+  async handle(
+    message: NapCatEvent,
+    napCatService: NapCatService,
+  ): Promise<void> {
     const helpText = '插件列表：/help - 查看帮助';
 
-    sendMatchMessage(napCatService, message, [
+    await sendMatchMessage(napCatService, message, [
       { type: 'text', data: { text: helpText } },
     ]);
   }

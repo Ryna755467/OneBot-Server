@@ -1,27 +1,30 @@
 import { NapCatService } from '@napcat/service';
-import { NapCatEvent, MessageSegment } from '@napcat/interfaces/message';
+import {
+  NapCatEvent,
+  MessageSegment,
+  NapCatApiResponse,
+} from '@napcat/interfaces';
 
 // 回复消息
 export const replyMessage = (
   napCatService: NapCatService,
   message: NapCatEvent,
   content: MessageSegment[],
-): void => {
+): Promise<NapCatApiResponse | void> => {
   const { message_type, message_id, user_id, group_id } = message;
 
   const segments: MessageSegment[] = [
-    {
-      type: 'reply',
-      data: { id: message_id },
-    },
+    { type: 'reply', data: { id: message_id } },
     ...content,
   ];
 
   if (message_type === 'private') {
-    napCatService.sendPrivateMessage(user_id!, segments);
+    return napCatService.sendPrivateMessage(user_id!, segments);
   } else if (message_type === 'group') {
-    napCatService.sendGroupMessage(group_id!, segments);
+    return napCatService.sendGroupMessage(group_id!, segments);
   }
+
+  return Promise.resolve();
 };
 
 // 发送消息
@@ -29,14 +32,16 @@ export const sendMessage = (
   napCatService: NapCatService,
   message: NapCatEvent,
   content: MessageSegment[],
-): void => {
+): Promise<NapCatApiResponse | void> => {
   const { message_type, user_id, group_id } = message;
 
   if (message_type === 'private') {
-    napCatService.sendPrivateMessage(user_id!, content);
+    return napCatService.sendPrivateMessage(user_id!, content);
   } else if (message_type === 'group') {
-    napCatService.sendGroupMessage(group_id!, content);
+    return napCatService.sendGroupMessage(group_id!, content);
   }
+
+  return Promise.resolve();
 };
 
 // 自动识别
@@ -44,12 +49,12 @@ export const sendMatchMessage = (
   napCatService: NapCatService,
   message: NapCatEvent,
   content: MessageSegment[],
-): void => {
+): Promise<NapCatApiResponse | void> => {
   const { message_type } = message;
 
   if (message_type === 'private') {
-    sendMessage(napCatService, message, content);
-  } else if (message_type === 'group') {
-    replyMessage(napCatService, message, content);
+    return sendMessage(napCatService, message, content);
+  } else {
+    return replyMessage(napCatService, message, content);
   }
 };
