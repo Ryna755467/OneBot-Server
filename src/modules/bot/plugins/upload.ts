@@ -1,7 +1,7 @@
 import { BotPlugin } from '../service';
 import { NapCatEvent, NapCatApiResponse, GroupFile } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
-import { replyMessage, isMatch } from '../utils';
+import { replyMessage, sendMessage, isMatch } from '../utils';
 import { randomUUID } from 'crypto';
 import { join } from 'path';
 import axios from 'axios';
@@ -54,26 +54,68 @@ export class UploadPlugin implements BotPlugin {
 
       const status = { success: 0, skipped: 0, failed: 0 };
 
-      for (const file of files) {
+      for (const [i, file] of files.entries()) {
         const { file_name, file_id } = file;
+        const progress = `${i + 1}/${files.length}`;
         const filePath = join(this.saveDir, file_name);
 
         const exists = await fs.pathExists(filePath);
         if (exists) {
+          sendMessage(napCatService, message, [
+            {
+              type: 'text',
+              data: {
+                text: `${file_name} 已经存在 - ${progress} skipped`,
+              },
+            },
+          ]);
           status.skipped++;
           continue;
         }
 
         const fileUrl = await this.getFileUrl(napCatService, group_id, file_id);
         if (!fileUrl) {
+          sendMessage(napCatService, message, [
+            {
+              type: 'text',
+              data: {
+                text: `${file_name} 未获取到下载链接 - ${progress} failed`,
+              },
+            },
+          ]);
           status.failed++;
           continue;
         }
 
+        sendMessage(napCatService, message, [
+          {
+            type: 'text',
+            data: {
+              text: `${file_name} 正在上传 - ${progress} processing`,
+            },
+          },
+        ]);
+
         const ok = await this.download(fileUrl, filePath);
         if (ok) {
+          sendMessage(napCatService, message, [
+            {
+              type: 'text',
+              data: {
+                text: `${file_name} 上传成功 - ${progress} done`,
+              },
+            },
+          ]);
           status.success++;
         } else {
+          sendMessage(napCatService, message, [
+            {
+              type: 'text',
+              data: {
+                text: `${file_name} 上传失败 - ${progress} failed`,
+              },
+            },
+          ]);
           status.failed++;
         }
       }
@@ -82,13 +124,16 @@ export class UploadPlugin implements BotPlugin {
         {
           type: 'text',
           data: {
-            text: `上传完成，成功：${status.success} 已存在：${status.skipped} 失败：${status.failed}`,
+            text: `上传完成 - 成功：${status.success} 失败：${status.failed} 跳过：${status.skipped}`,
           },
         },
       ]);
     } catch (err) {
       return replyMessage(napCatService, message, [
-        { type: 'text', data: { text: `上传失败：${(err as Error).message}` } },
+        {
+          type: 'text',
+          data: { text: `上传错误 - ${(err as Error).message}` },
+        },
       ]);
     }
   }
