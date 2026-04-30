@@ -1,15 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { WebSocket } from 'ws';
-import { NapCatMessage, NapCatApiRequest, MessageSegment } from './interfaces';
-import { isNapCatApiResponse } from './utils';
+import { Injectable } from '@nestjs/common';
 import { BotService } from '@bot/service';
+import { WebSocket } from 'ws';
+import {
+  NapCatMessage,
+  MessageSegment,
+  NapCatApiRequest,
+  NapCatApiResponse,
+} from './interfaces';
+import { isNapCatApiResponse } from './utils';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class NapCatService {
-  private readonly logger = new Logger(NapCatService.name);
-  private activeClient: WebSocket | null = null;
-
   constructor(private readonly botService: BotService) {}
+
+  private activeClient: WebSocket | null = null;
+  private requestMap = new Map<
+    string,
+    {
+      resolve: (res: NapCatApiResponse) => void;
+      reject: (err: Error) => void;
+    }
+  >();
 
   setActiveClient(client: WebSocket): void {
     this.activeClient = client;
@@ -19,10 +31,22 @@ export class NapCatService {
     this.activeClient = null;
   }
 
-  handleIncomingMessage(message: NapCatMessage, client: WebSocket): void {
-    // API响应处理
+  handleIncomingMessage(message: NapCatMessage): void {
+    // API响应
     if (isNapCatApiResponse(message)) {
-      void this.botService.handleApiResponse(message);
+      const res = message;
+      const { status, message: content, echo } = res;
+
+      if (echo && this.requestMap.has(echo)) {
+        const { resolve, reject } = this.requestMap.get(echo)!;
+        this.requestMap.delete(echo);
+
+        if (status === 'ok') {
+          resolve(res);
+        } else {
+          reject(new Error(content));
+        }
+      }
       return;
     }
 
@@ -51,64 +75,100 @@ export class NapCatService {
     }
   }
 
-  sendApiRequest(request: NapCatApiRequest): void {
-    if (!this.activeClient || this.activeClient.readyState !== WebSocket.OPEN) {
-      this.logger.error('NapCat 客户端未连接，无法发送请求');
-      return;
-    }
+  // 不要对外提供协议层的方法
+  private sendApiRequest(
+    request: Omit<NapCatApiRequest, 'echo'>,
+  ): Promise<NapCatApiResponse> {
+    return new Promise((resolve, reject) => {
+      if (
+        !this.activeClient ||
+        this.activeClient.readyState !== WebSocket.OPEN
+      ) {
+        reject(new Error('客户端未连接'));
+        return;
+      }
 
-    const data = JSON.stringify(request);
-    this.activeClient.send(data);
-    this.logger.debug(`发送 NapCat API 请求: ${data}`);
+      const echo = randomUUID();
+      const fullRequest: NapCatApiRequest = { ...request, echo };
+
+      const timeout = setTimeout(() => {
+        this.requestMap.delete(echo);
+        reject(new Error(`${request.action} - 请求超时`));
+      }, 5000);
+
+      this.requestMap.set(echo, {
+        resolve: (res: NapCatApiResponse) => {
+          clearTimeout(timeout);
+          resolve(res);
+        },
+        reject: (err: Error) => {
+          clearTimeout(timeout);
+          reject(err);
+        },
+      });
+
+      const data = JSON.stringify(fullRequest);
+      this.activeClient.send(data);
+    });
   }
 
-  sendPrivateMessage(userId: number, message: MessageSegment[]): void {
-    this.sendApiRequest({
+  // 发送私聊消息
+  sendPrivateMessage(
+    userId: number,
+    message: MessageSegment[],
+  ): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'send_private_msg',
       params: { user_id: userId, message },
     });
   }
 
-  sendGroupMessage(groupId: number, message: MessageSegment[]): void {
-    this.sendApiRequest({
+  // 发送群聊消息
+  sendGroupMessage(
+    groupId: number,
+    message: MessageSegment[],
+  ): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'send_group_msg',
       params: { group_id: groupId, message },
     });
   }
 
   // 获取私聊文件真实URL
-  getPrivateFileUrl(userId: number, fileId: string, echo: string): void {
-    this.sendApiRequest({
+  getPrivateFileUrl(
+    userId: number,
+    fileId: string,
+  ): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'get_private_file_url',
       params: { user_id: userId, file_id: fileId },
-      echo,
     });
   }
 
   // 获取群聊文件真实URL
-  getGroupFileUrl(groupId: number, fileId: string, echo: string): void {
-    this.sendApiRequest({
+  getGroupFileUrl(groupId: number, fileId: string): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'get_group_file_url',
       params: { group_id: groupId, file_id: fileId },
-      echo,
     });
   }
 
   // 获取群根目录文件列表
-  getGroupRootFiles(groupId: number, echo: string): void {
-    this.sendApiRequest({
+  getGroupRootFiles(groupId: number): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'get_group_root_files',
       params: { group_id: groupId },
-      echo,
     });
   }
 
   // 获取群文件夹文件列表
-  getGroupFilesByFolder(groupId: number, folderId: string, echo: string): void {
-    this.sendApiRequest({
+  getGroupFilesByFolder(
+    groupId: number,
+    folderId: string,
+  ): Promise<NapCatApiResponse> {
+    return this.sendApiRequest({
       action: 'get_group_files_by_folder',
       params: { group_id: groupId, folder_id: folderId },
-      echo,
     });
   }
 }

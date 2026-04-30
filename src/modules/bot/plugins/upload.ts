@@ -1,8 +1,7 @@
 import { BotPlugin } from '../service';
-import { NapCatEvent, NapCatApiResponse, GroupFile } from '@napcat/interfaces';
+import { NapCatEvent, GroupFile } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
 import { replyMessage, sendMessage, isMatch } from '../utils';
-import { randomUUID } from 'crypto';
 import { join } from 'path';
 import axios from 'axios';
 import fs from 'fs-extra';
@@ -12,8 +11,6 @@ export class UploadPlugin implements BotPlugin {
 
   private readonly folderName = process.env.UPLOAD_FOLDER_NAME;
   private readonly saveDir = process.env.UPLOAD_SAVE_DIR!;
-  // 暂存等待响应的回调函数
-  private waiting = new Map<string, (res: NapCatApiResponse) => void>();
 
   name = 'upload';
   description = '上传群文件到服务器 /upload';
@@ -29,16 +26,18 @@ export class UploadPlugin implements BotPlugin {
     try {
       const { message_type, group_id } = message;
       if (message_type !== 'group' || !group_id) {
-        return replyMessage(napCatService, message, [
+        await replyMessage(napCatService, message, [
           { type: 'text', data: { text: `${this.commandPrefix} 仅群聊可用` } },
         ]);
+        return;
       }
 
       const folderId = await this.getFolderId(napCatService, group_id);
       if (!folderId) {
-        return replyMessage(napCatService, message, [
+        await replyMessage(napCatService, message, [
           { type: 'text', data: { text: `未找到${this.folderName}文件夹` } },
         ]);
+        return;
       }
 
       const files = await this.getFolderFiles(
@@ -47,9 +46,10 @@ export class UploadPlugin implements BotPlugin {
         folderId,
       );
       if (!files.length) {
-        return replyMessage(napCatService, message, [
+        await replyMessage(napCatService, message, [
           { type: 'text', data: { text: `${this.folderName}文件夹为空` } },
         ]);
+        return;
       }
 
       const status = { success: 0, skipped: 0, failed: 0 };
@@ -61,7 +61,7 @@ export class UploadPlugin implements BotPlugin {
 
         const exists = await fs.pathExists(filePath);
         if (exists) {
-          sendMessage(napCatService, message, [
+          await sendMessage(napCatService, message, [
             {
               type: 'text',
               data: {
@@ -75,7 +75,7 @@ export class UploadPlugin implements BotPlugin {
 
         const fileUrl = await this.getFileUrl(napCatService, group_id, file_id);
         if (!fileUrl) {
-          sendMessage(napCatService, message, [
+          await sendMessage(napCatService, message, [
             {
               type: 'text',
               data: {
@@ -87,7 +87,7 @@ export class UploadPlugin implements BotPlugin {
           continue;
         }
 
-        sendMessage(napCatService, message, [
+        await sendMessage(napCatService, message, [
           {
             type: 'text',
             data: {
@@ -98,7 +98,7 @@ export class UploadPlugin implements BotPlugin {
 
         const ok = await this.download(fileUrl, filePath);
         if (ok) {
-          sendMessage(napCatService, message, [
+          await sendMessage(napCatService, message, [
             {
               type: 'text',
               data: {
@@ -108,7 +108,7 @@ export class UploadPlugin implements BotPlugin {
           ]);
           status.success++;
         } else {
-          sendMessage(napCatService, message, [
+          await sendMessage(napCatService, message, [
             {
               type: 'text',
               data: {
@@ -120,7 +120,7 @@ export class UploadPlugin implements BotPlugin {
         }
       }
 
-      return replyMessage(napCatService, message, [
+      await replyMessage(napCatService, message, [
         {
           type: 'text',
           data: {
@@ -129,7 +129,7 @@ export class UploadPlugin implements BotPlugin {
         },
       ]);
     } catch (err) {
-      return replyMessage(napCatService, message, [
+      await replyMessage(napCatService, message, [
         {
           type: 'text',
           data: { text: `上传错误 - ${(err as Error).message}` },
@@ -138,37 +138,13 @@ export class UploadPlugin implements BotPlugin {
     }
   }
 
-  handleApiResponse(message: NapCatApiResponse): void {
-    const { echo } = message;
-    if (!echo) return;
-
-    const cb = this.waiting.get(echo);
-    if (cb) {
-      this.waiting.delete(echo);
-      cb(message);
-    }
-  }
-
-  // WebSocket收发不同步 用Promise+回调实现等待
-  private wait(echo: string): Promise<NapCatApiResponse> {
-    return new Promise((resolve, reject) => {
-      this.waiting.set(echo, resolve);
-      setTimeout(() => {
-        this.waiting.delete(echo);
-        reject(new Error(`请求超时：${echo}`));
-      }, 5000);
-    });
-  }
-
   private async getFolderId(
     service: NapCatService,
     groupId: number,
   ): Promise<string> {
-    const echo = randomUUID();
-    service.getGroupRootFiles(groupId, echo);
-
-    const res = await this.wait(echo);
+    const res = await service.getGroupRootFiles(groupId);
     const folders = res.data.folders || [];
+
     const target = folders.find((f) => f.folder_name === this.folderName);
     return target?.folder_id ?? '';
   }
@@ -178,10 +154,7 @@ export class UploadPlugin implements BotPlugin {
     groupId: number,
     folderId: string,
   ): Promise<GroupFile[]> {
-    const echo = randomUUID();
-    service.getGroupFilesByFolder(groupId, folderId, echo);
-
-    const res = await this.wait(echo);
+    const res = await service.getGroupFilesByFolder(groupId, folderId);
     return res.data.files ?? [];
   }
 
@@ -190,10 +163,7 @@ export class UploadPlugin implements BotPlugin {
     groupId: number,
     fileId: string,
   ): Promise<string> {
-    const echo = randomUUID();
-    service.getGroupFileUrl(groupId, fileId, echo);
-
-    const res = await this.wait(echo);
+    const res = await service.getGroupFileUrl(groupId, fileId);
     return res.data.url ?? '';
   }
 

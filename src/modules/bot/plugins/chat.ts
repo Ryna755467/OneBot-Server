@@ -4,15 +4,7 @@ import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
 import { ConversationManager, MessageManager } from '../managers';
 import { sendMatchMessage, callLLM, getUid } from '../utils';
-import { randomUUID } from 'crypto';
 import { download } from '@utils/index';
-
-type PendingTask = {
-  napCatService: NapCatService;
-  message: NapCatEvent;
-  prompt: string;
-  remaining: number;
-};
 
 @Injectable()
 export class ChatPlugin implements BotPlugin {
@@ -21,7 +13,6 @@ export class ChatPlugin implements BotPlugin {
     private readonly messageManager: MessageManager,
   ) {}
 
-  private pendingTasks = new Map<number, PendingTask>();
   private readonly userId = process.env.USER_ID!;
 
   name = 'chat';
@@ -36,7 +27,7 @@ export class ChatPlugin implements BotPlugin {
     napCatService: NapCatService,
   ): Promise<void> {
     try {
-      const { message_type, message_id, message: userMsg } = message;
+      const { message_type, message: userMsg } = message;
       if (!userMsg) return;
 
       // 保存所有消息 引用时读取
@@ -54,86 +45,28 @@ export class ChatPlugin implements BotPlugin {
         if (!isAtMe) return;
       }
 
-      const { prompt, fileCount } = await this.handleSegments(
-        message,
-        napCatService,
-      );
+      const prompt = await this.handleSegments(message, napCatService);
+      const reply = await this.handleChat(prompt, getUid(message));
 
-      if (fileCount === 0) {
-        const reply = await this.handleChat(prompt, getUid(message));
-
-        sendMatchMessage(napCatService, message, [
-          { type: 'text', data: { text: reply } },
-        ]);
-      } else {
-        this.pendingTasks.set(message_id!, {
-          napCatService,
-          message,
-          prompt,
-          remaining: fileCount,
-        });
-      }
-    } catch {
-      sendMatchMessage(napCatService, message, [
-        { type: 'text', data: { text: '服务器异常' } },
-      ]);
-    }
-  }
-
-  async handleApiResponse(message: NapCatApiResponse): Promise<void> {
-    try {
-      const { echo, data } = message;
-      const { url } = data;
-      if (!echo || !url) return;
-
-      let targetTask: PendingTask | null = null;
-      let targetId: number | null = null;
-
-      for (const [id, task] of this.pendingTasks) {
-        if (task.prompt.includes(`UUID：${echo}`)) {
-          targetTask = task;
-          targetId = id;
-          break;
-        }
-      }
-      if (!targetTask || !targetId) return;
-
-      const publicUrl = await download(url);
-      const newPrompt = targetTask.prompt.replace(
-        `UUID：${echo}`,
-        `文件链接：${publicUrl}`,
-      );
-      targetTask.remaining--;
-
-      if (targetTask.remaining > 0) {
-        targetTask.prompt = newPrompt;
-        return;
-      }
-
-      const reply = await this.handleChat(
-        newPrompt,
-        getUid(targetTask.message),
-      );
-
-      sendMatchMessage(targetTask.napCatService, targetTask.message, [
+      await sendMatchMessage(napCatService, message, [
         { type: 'text', data: { text: reply } },
       ]);
-      this.pendingTasks.delete(targetId);
     } catch {
-      console.error('handleApiResponse error');
+      await sendMatchMessage(napCatService, message, [
+        { type: 'text', data: { text: '服务器异常' } },
+      ]);
     }
   }
 
   private async handleSegments(
     message: NapCatEvent,
     napCatService: NapCatService,
-  ): Promise<{ prompt: string; fileCount: number }> {
+  ): Promise<string> {
     const { message_type, user_id, group_id, message: userMsg } = message;
+    if (!userMsg) return '';
 
     let prompt = '';
-    let fileCount = 0;
-
-    for (const segment of userMsg!) {
+    for (const segment of userMsg) {
       const { type, data } = segment;
       const { text, file, file_id, url, id } = data;
 
@@ -147,23 +80,28 @@ export class ChatPlugin implements BotPlugin {
           break;
 
         case 'video': {
-          const publicUrl = await download(url!);
+          if (!url) continue;
           // 视频可以立刻拿到下载链接 需要转存到服务器才能访问
+          const publicUrl = await download(url);
           prompt += `[视频名称：${file}，视频链接：${publicUrl}]`;
           break;
         }
 
         case 'file': {
-          const echo = randomUUID();
+          if (!file_id) continue;
+          let res: NapCatApiResponse;
 
           if (message_type === 'private') {
-            napCatService.getPrivateFileUrl(user_id!, file_id!, echo);
-          } else if (message_type === 'group') {
-            napCatService.getGroupFileUrl(group_id!, file_id!, echo);
+            res = await napCatService.getPrivateFileUrl(user_id!, file_id);
+          } else {
+            res = await napCatService.getGroupFileUrl(group_id!, file_id);
           }
 
-          prompt += `[文件名称：${file}，UUID：${echo}]`;
-          fileCount++;
+          const url = res.data.url;
+          if (!url) continue;
+
+          const publicUrl = await download(url);
+          prompt += `[文件名称：${file}，文件链接：${publicUrl}]`;
           break;
         }
 
@@ -171,17 +109,17 @@ export class ChatPlugin implements BotPlugin {
           const prevMessage = await this.messageManager.findMessage(id!);
           if (!prevMessage) continue;
 
-          const { prompt: replyPrompt, fileCount: replyFileCount } =
-            await this.handleSegments(prevMessage, napCatService);
+          const replyPrompt = await this.handleSegments(
+            prevMessage,
+            napCatService,
+          );
 
-          prompt += `[引用了一条消息：“${replyPrompt}”]`;
-          fileCount += replyFileCount;
+          prompt += `[引用消息："${replyPrompt}"]`;
           break;
         }
       }
     }
-
-    return { prompt, fileCount };
+    return prompt;
   }
 
   private async handleChat(prompt: string, uid: string) {
@@ -190,7 +128,6 @@ export class ChatPlugin implements BotPlugin {
       prompt,
       conversationId,
     );
-
     await this.conversationManager.saveConversation(uid, newConversationId);
     return content;
   }

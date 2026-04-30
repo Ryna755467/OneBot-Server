@@ -23,11 +23,11 @@ export class NapCatGateway
   constructor(private readonly napCatService: NapCatService) {}
 
   afterInit(server: Server): void {
-    this.logger.log('NapCat WebSocket 网关初始化完成');
+    this.logger.log('网关初始化');
   }
 
   handleConnection(client: WebSocket): void {
-    this.logger.log('NapCat 客户端已连接');
+    this.logger.log('客户端已连接');
     this.napCatService.setActiveClient(client);
 
     const messageHandler = (data: Buffer) => {
@@ -35,10 +35,10 @@ export class NapCatGateway
         const raw = JSON.parse(data.toString()) as unknown;
         const message = raw as NapCatMessage;
 
-        this.logger.debug(`收到 NapCat 消息: ${JSON.stringify(message)}`);
-        this.napCatService.handleIncomingMessage(message, client);
+        this.logger.debug(`收到消息: ${JSON.stringify(message)}`);
+        this.napCatService.handleIncomingMessage(message);
       } catch (error) {
-        this.logger.error(`解析消息失败: ${(error as Error).message}`);
+        this.logger.error(`解析失败: ${(error as Error).message}`);
       }
     };
 
@@ -50,7 +50,7 @@ export class NapCatGateway
   }
 
   handleDisconnect(client: WebSocket): void {
-    this.logger.log('NapCat 客户端已断开');
+    this.logger.log('客户端已断开');
     this.napCatService.clearActiveClient();
   }
 }
