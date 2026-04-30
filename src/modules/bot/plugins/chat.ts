@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { NapCatApiResponse, NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
 import { ConversationManager, MessageManager } from '../managers';
-import { replyMessage, callLLM, getUid } from '../utils';
+import { sendMatchMessage, callLLM, getUid } from '../utils';
 import { randomUUID } from 'crypto';
 import { download } from '@utils/index';
 
@@ -62,7 +62,7 @@ export class ChatPlugin implements BotPlugin {
       if (fileCount === 0) {
         const reply = await this.handleChat(prompt, getUid(message));
 
-        replyMessage(napCatService, message, [
+        sendMatchMessage(napCatService, message, [
           { type: 'text', data: { text: reply } },
         ]);
       } else {
@@ -74,7 +74,7 @@ export class ChatPlugin implements BotPlugin {
         });
       }
     } catch {
-      replyMessage(napCatService, message, [
+      sendMatchMessage(napCatService, message, [
         { type: 'text', data: { text: '服务器异常' } },
       ]);
     }
@@ -115,7 +115,7 @@ export class ChatPlugin implements BotPlugin {
         getUid(targetTask.message),
       );
 
-      replyMessage(targetTask.napCatService, targetTask.message, [
+      sendMatchMessage(targetTask.napCatService, targetTask.message, [
         { type: 'text', data: { text: reply } },
       ]);
       this.pendingTasks.delete(targetId);
@@ -168,11 +168,11 @@ export class ChatPlugin implements BotPlugin {
         }
 
         case 'reply': {
-          const replyMessage = await this.messageManager.findMessage(id!);
-          if (!replyMessage) continue;
+          const prevMessage = await this.messageManager.findMessage(id!);
+          if (!prevMessage) continue;
 
           const { prompt: replyPrompt, fileCount: replyFileCount } =
-            await this.handleSegments(replyMessage, napCatService);
+            await this.handleSegments(prevMessage, napCatService);
 
           prompt += `[引用了一条消息：“${replyPrompt}”]`;
           fileCount += replyFileCount;

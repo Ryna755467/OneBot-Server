@@ -1,7 +1,7 @@
 import { BotPlugin } from '../service';
 import { NapCatEvent } from '@napcat/interfaces';
 import { NapCatService } from '@napcat/service';
-import { replyMessage, isMatch } from '../utils';
+import { sendMatchMessage, isMatch } from '../utils';
 import { Rcon } from 'rcon-client';
 
 export class RconPlugin implements BotPlugin {
@@ -36,15 +36,15 @@ export class RconPlugin implements BotPlugin {
     try {
       const userId = message.user_id;
       if (!userId || !this.allowedUsers.includes(userId)) {
-        return replyMessage(napCatService, message, [
-          { type: 'text', data: { text: '无RCON权限' } },
+        return sendMatchMessage(napCatService, message, [
+          { type: 'text', data: { text: '没有远程控制台权限' } },
         ]);
       }
 
       const { cmd } = isMatch(message, this.commandPrefix);
       if (!cmd) {
-        return replyMessage(napCatService, message, [
-          { type: 'text', data: { text: 'RCON 用法：/remote ${cmd}' } },
+        return sendMatchMessage(napCatService, message, [
+          { type: 'text', data: { text: 'RCON 指令：/remote ${cmd}' } },
         ]);
       }
 
@@ -53,11 +53,16 @@ export class RconPlugin implements BotPlugin {
 
       const reply = result.length > 800 ? result.slice(0, 800) + '...' : result;
 
-      replyMessage(napCatService, message, [
-        { type: 'text', data: { text: `RCON 执行结果：\n${reply}` } },
+      sendMatchMessage(napCatService, message, [
+        {
+          type: 'text',
+          data: {
+            text: reply ? `${cmd} 返回信息：\n${reply}` : `${cmd} 执行成功`,
+          },
+        },
       ]);
     } catch (err) {
-      replyMessage(napCatService, message, [
+      sendMatchMessage(napCatService, message, [
         {
           type: 'text',
           data: { text: `RCON 执行错误：\n${(err as Error).message}` },
