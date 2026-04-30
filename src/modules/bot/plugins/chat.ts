@@ -51,9 +51,9 @@ export class ChatPlugin implements BotPlugin {
       await sendMatchMessage(napCatService, message, [
         { type: 'text', data: { text: reply } },
       ]);
-    } catch {
+    } catch (error) {
       await sendMatchMessage(napCatService, message, [
-        { type: 'text', data: { text: '服务器异常' } },
+        { type: 'text', data: { text: (error as Error).message } },
       ]);
     }
   }
